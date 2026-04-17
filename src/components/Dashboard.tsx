@@ -60,7 +60,7 @@ const Dashboard = () => {
           }
         }
 
-        if (latestBillDate && latestBillDate > sevenDaysAgo) {
+        if (latestBillDate && (latestBillDate as Date) > sevenDaysAgo) {
           isActive = true;
         }
 
