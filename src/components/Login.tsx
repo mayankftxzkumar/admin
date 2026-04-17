@@ -43,7 +43,7 @@ const Login = () => {
             <input
               className="form-input"
               type="email"
-              placeholder="admin@vyapify.online"
+              placeholder="mayankftzx@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
