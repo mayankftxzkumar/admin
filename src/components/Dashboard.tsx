@@ -33,23 +33,27 @@ const Dashboard = () => {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      for (const userDoc of usersSnap.docs) {
-        // Count bills
-        const billsSnap = await getDocs(collection(db, 'users', userDoc.id, 'bills'));
+      // Process a single user — returns partial stats
+      const processUser = async (userDoc: any) => {
         let userRevenue = 0;
-        let latestBillDate: Date | null = null as Date | null;
+        let userProducts = 0;
+        let isActive = false;
+        const userMonthly: Record<string, number> = {};
 
+        const [billsSnap, productsSnap] = await Promise.all([
+          getDocs(collection(db, 'users', userDoc.id, 'bills')),
+          getDocs(collection(db, 'users', userDoc.id, 'products')),
+        ]);
+
+        let latestBillDate: Date | null = null;
         billsSnap.forEach((billDoc) => {
           const data = billDoc.data();
           const amount = data.totalAmount || 0;
           userRevenue += amount;
-          totalRevenue += amount;
-
-          // Track monthly revenue
           if (data.date) {
             const billDate = new Date(data.date);
             const monthKey = `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
-            monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + amount;
+            userMonthly[monthKey] = (userMonthly[monthKey] || 0) + amount;
             if (!latestBillDate || billDate > latestBillDate) {
               latestBillDate = billDate;
             }
@@ -57,12 +61,29 @@ const Dashboard = () => {
         });
 
         if (latestBillDate && latestBillDate > sevenDaysAgo) {
-          activeUsers++;
+          isActive = true;
         }
 
-        // Count products
-        const productsSnap = await getDocs(collection(db, 'users', userDoc.id, 'products'));
-        totalProducts += productsSnap.size;
+        userProducts = productsSnap.size;
+
+        return { userRevenue, userProducts, isActive, userMonthly };
+      };
+
+      // Process users in parallel batches of 20
+      const BATCH_SIZE = 20;
+      const userDocs = usersSnap.docs;
+      for (let i = 0; i < userDocs.length; i += BATCH_SIZE) {
+        const batch = userDocs.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(batch.map(processUser));
+
+        for (const result of results) {
+          totalRevenue += result.userRevenue;
+          totalProducts += result.userProducts;
+          if (result.isActive) activeUsers++;
+          for (const [month, amount] of Object.entries(result.userMonthly)) {
+            monthlyRevenue[month] = (monthlyRevenue[month] || 0) + amount;
+          }
+        }
       }
 
       // Prepare revenue data for chart
