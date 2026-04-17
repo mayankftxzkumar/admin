@@ -46,7 +46,7 @@ const Dashboard = () => {
         ]);
 
         let latestBillDate: Date | null = null;
-        billsSnap.forEach((billDoc) => {
+        for (const billDoc of billsSnap.docs) {
           const data = billDoc.data();
           const amount = data.totalAmount || 0;
           userRevenue += amount;
@@ -58,7 +58,7 @@ const Dashboard = () => {
               latestBillDate = billDate;
             }
           }
-        });
+        }
 
         if (latestBillDate && latestBillDate > sevenDaysAgo) {
           isActive = true;
