@@ -39,10 +39,11 @@ const UserDetail = () => {
       }
       const data = userDoc.data();
 
-      const productsSnap = await getDocs(collection(db, 'users', userId, 'products'));
+      const [productsSnap, billsSnap] = await Promise.all([
+        getDocs(collection(db, 'users', userId, 'products')),
+        getDocs(collection(db, 'users', userId, 'bills')),
+      ]);
       const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      const billsSnap = await getDocs(collection(db, 'users', userId, 'bills'));
       const bills = billsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       setUser({

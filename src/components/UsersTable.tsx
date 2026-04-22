@@ -46,27 +46,30 @@ const UsersTable = () => {
       const usersSnap = await getDocs(collection(db, 'users'));
       const userList: UserRow[] = [];
 
-      for (const doc of usersSnap.docs) {
-        const data = doc.data();
-        
-        // Get product count
-        const productsSnap = await getDocs(collection(db, 'users', doc.id, 'products'));
-        
-        // Get bill count + revenue
-        const billsSnap = await getDocs(collection(db, 'users', doc.id, 'bills'));
-        let totalRevenue = 0;
-        billsSnap.forEach(b => { totalRevenue += b.data().totalAmount || 0; });
-
-        userList.push({
-          uid: doc.id,
-          email: data.email || '—',
-          shopName: data.shopName || 'Unnamed Shop',
-          businessType: data.businessType || '—',
-          productCount: productsSnap.size,
-          billCount: billsSnap.size,
-          totalRevenue,
-          disabled: data.disabled || false,
-        });
+      const BATCH = 20;
+      const userDocs = usersSnap.docs;
+      for (let i = 0; i < userDocs.length; i += BATCH) {
+        const batch = userDocs.slice(i, i + BATCH);
+        const rows = await Promise.all(batch.map(async (userDoc) => {
+          const data = userDoc.data();
+          const [productsSnap, billsSnap] = await Promise.all([
+            getDocs(collection(db, 'users', userDoc.id, 'products')),
+            getDocs(collection(db, 'users', userDoc.id, 'bills')),
+          ]);
+          let totalRevenue = 0;
+          billsSnap.forEach(b => { totalRevenue += b.data().totalAmount || 0; });
+          return {
+            uid: userDoc.id,
+            email: data.email || '—',
+            shopName: data.shopName || 'Unnamed Shop',
+            businessType: data.businessType || '—',
+            productCount: productsSnap.size,
+            billCount: billsSnap.size,
+            totalRevenue,
+            disabled: data.disabled || false,
+          } as UserRow;
+        }));
+        userList.push(...rows);
       }
 
       setUsers(userList);

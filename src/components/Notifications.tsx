@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { Send, Users, User, Clock, CheckCircle, XCircle, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -84,23 +84,7 @@ const Notifications = () => {
       }
     } catch (err: any) {
       console.error(err);
-      // Fallback: log to Firestore directly if API isn't deployed yet
-      try {
-        await addDoc(collection(db, 'notifications_log'), {
-          title: title.trim(),
-          body: body.trim(),
-          target: target === 'all' ? 'ALL_USERS' : targetUid.trim(),
-          sentAt: new Date().toISOString(),
-          status: 'queued',
-        });
-        toast.success('Notification queued (will be sent once deployed to Vercel)');
-        setTitle('');
-        setBody('');
-        setTargetUid('');
-        fetchLogs();
-      } catch (fbErr) {
-        toast.error('Failed to send notification');
-      }
+      toast.error('Failed to reach notification API. Check Vercel deployment.');
     } finally {
       setSending(false);
     }
